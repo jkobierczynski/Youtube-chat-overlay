@@ -1,0 +1,37 @@
+{
+  "clientId": "YOUR_OAUTH_CLIENT_ID.apps.googleusercontent.com",
+  "clientSecret": "YOUR_OAUTH_CLIENT_SECRET",
+
+  "displayMode": "ticker",
+
+  "layouts": {
+    "stacked": {
+      "x": 40,
+      "y": 40,
+      "width": 420,
+      "height": 640,
+      "opacity": 0.85,
+      "fontSize": 16,
+      "maxMessages": 20
+    },
+    "ticker": {
+      "x": null,
+      "y": null,
+      "width": null,
+      "height": 96,
+      "opacity": 0.75,
+      "fontSize": 20,
+      "speed": 140,
+      "gap": 80,
+      "maxWidth": 480,
+      "maxLines": 2
+    }
+  },
+
+  "hotkeys": {
+    "toggleMoveMode": "Control+Alt+M",
+    "toggleVisibility": "Control+Alt+H",
+    "toggleDisplayMode": "Control+Alt+T",
+    "quit": "Control+Alt+Q"
+  }
+}

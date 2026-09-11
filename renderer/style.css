@@ -1,0 +1,207 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  /* Overwritten from config.json's per-mode settings at runtime. */
+  --overlay-alpha: 0.85;
+  --ticker-max-width: 480px;
+  --ticker-max-lines: 2;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  font-family: "Segoe UI", Roboto, Arial, sans-serif;
+  user-select: none;
+}
+
+#drag-bar {
+  display: none;
+  -webkit-app-region: drag;
+  background: rgba(255, 200, 0, 0.85);
+  color: #1a1a1a;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 8px 8px 0 0;
+}
+
+body.move-mode {
+  outline: 2px dashed rgba(255, 200, 0, 0.85);
+}
+
+body.move-mode #drag-bar {
+  display: block;
+}
+
+#status {
+  display: none;
+  color: #eee;
+  background: rgba(0, 0, 0, 0.55);
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-bottom: 6px;
+}
+
+#status.visible {
+  display: block;
+}
+
+body.mode-stacked #ticker,
+body.mode-ticker #messages {
+  display: none;
+}
+
+#messages {
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 10px;
+}
+
+/* ---- Ticker layout: a single scrolling strip, right to left ---- */
+
+#ticker {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: rgba(0, 0, 0, var(--overlay-alpha));
+}
+
+body.mode-ticker #status {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  z-index: 2;
+}
+
+#ticker-track {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition-property: transform;
+  transition-timing-function: ease-out;
+  will-change: transform;
+}
+
+.ticker-chip {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: var(--ticker-max-width, 480px);
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  will-change: transform;
+}
+
+.ticker-chip.superchat {
+  background: rgba(255, 160, 0, 0.85);
+}
+
+.ticker-chip.event {
+  background: rgba(80, 120, 255, 0.55);
+  font-style: italic;
+}
+
+.ticker-chip .avatar {
+  width: 22px;
+  height: 22px;
+  margin-top: 0;
+}
+
+/* Long messages wrap up to --ticker-max-lines lines, then clip with an
+   ellipsis rather than growing the chip further or forcing one giant
+   single-line pill. min-width:0 is what lets a flex child actually wrap
+   instead of refusing to shrink below its unwrapped width. */
+.ticker-chip .body {
+  min-width: 0;
+  white-space: normal;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--ticker-max-lines, 2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.msg {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: rgba(0, 0, 0, var(--overlay-alpha));
+  border-radius: 10px;
+  padding: 6px 10px;
+  animation: fade-in 0.18s ease-out;
+  line-height: 1.35;
+}
+
+.msg.superchat {
+  background: rgba(255, 160, 0, 0.75);
+}
+
+.msg.event {
+  background: rgba(80, 120, 255, 0.55);
+  font-style: italic;
+}
+
+.avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background-size: cover;
+  background-position: center;
+  margin-top: 2px;
+}
+
+.avatar.fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.body {
+  color: #fff;
+  word-break: break-word;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.author {
+  font-weight: 700;
+  margin-right: 6px;
+}
+
+.author.owner { color: #ffd54a; }
+.author.moderator { color: #5ec8ff; }
+.author.member { color: #7fe08a; }
+
+.badge {
+  font-size: 10px;
+  vertical-align: middle;
+  margin-left: 4px;
+  opacity: 0.85;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
