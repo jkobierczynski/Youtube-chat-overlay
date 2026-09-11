@@ -16,6 +16,14 @@ your YouTube live chat, so you don't need a browser tab open to follow it.
 it's Electron underneath so it *can* run on macOS/Linux too, but you'd want
 to double check the window-level settings in `main.js` first.
 
+## Screenshots
+
+![Youtube-chat-overlay](Youtube-chat-overlay.jpg)
+
+## Made with Claude
+
+Made using Claude Sonnet 5 High
+
 ## 1. One-time Google Cloud setup
 
 YouTube's live chat API requires you to sign in with your own Google account
