@@ -24,6 +24,42 @@ let seenMessageIds = new Set();
 
 const BROADCAST_CHECK_INTERVAL_MS = 30 * 1000;
 const DEFAULT_POLL_INTERVAL_MS = 5000;
+const QUOTA_RETRY_BUFFER_MS = 2 * 60 * 1000; // pad past the reset in case of clock skew
+
+function errorReason(err) {
+  return String(err?.errors?.[0]?.reason || err?.message || 'unknown error');
+}
+
+function isQuotaError(reason) {
+  const r = reason.toLowerCase();
+  return r.includes('quotaexceeded') || r.includes('dailylimitexceeded');
+}
+
+// YouTube's API quota resets at midnight Pacific Time, not local time and not
+// a rolling 24h window. Building this from Intl's LA wall-clock values (and
+// treating that time-of-day as if it were UTC) sidesteps DST arithmetic --
+// we never need to know today's PT/PDT offset, just the current PT hour.
+function msUntilQuotaReset() {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Los_Angeles',
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).formatToParts(new Date());
+
+  const get = (type) => Number(parts.find((p) => p.type === type).value);
+  const msSinceLaMidnight =
+    (((get('hour') % 24) * 60 + get('minute')) * 60 + get('second')) * 1000;
+
+  return 24 * 60 * 60 * 1000 - msSinceLaMidnight;
+}
+
+function quotaResetStatusMessage(waitMs) {
+  const eta = new Date(Date.now() + waitMs);
+  const local = eta.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return `Daily YouTube API quota used up for today. Will try again around ${local} (quota resets at midnight Pacific time).`;
+}
 
 function loadConfig() {
   const raw = fs.readFileSync(CONFIG_PATH, 'utf-8');
@@ -205,17 +241,27 @@ async function pollLoop() {
     const interval = Math.max(data.pollingIntervalMillis || DEFAULT_POLL_INTERVAL_MS, 2000);
     pollTimer = setTimeout(pollLoop, interval);
   } catch (err) {
-    const reason = err?.errors?.[0]?.reason || err?.message || 'unknown error';
+    const reason = errorReason(err);
     console.error('Chat poll failed:', reason);
 
-    if (String(reason).toLowerCase().includes('livechatended') ||
-        String(reason).toLowerCase().includes('livechatnotfound')) {
+    if (reason.toLowerCase().includes('livechatended') ||
+        reason.toLowerCase().includes('livechatnotfound')) {
       // Stream ended (or chat was disabled) -- go back to watching for the
       // next broadcast instead of hammering a dead chat ID.
       liveChatId = null;
       nextPageToken = undefined;
       sendStatus('Stream ended. Waiting for your next live broadcast…');
       startBroadcastWatch();
+      return;
+    }
+
+    if (isQuotaError(reason)) {
+      // The day's 10,000-unit quota is gone -- retrying every few seconds
+      // would just print the same error forever for no benefit. Wait for
+      // the actual reset instead of burning CPU (and log spam) until then.
+      const waitMs = msUntilQuotaReset() + QUOTA_RETRY_BUFFER_MS;
+      sendStatus(quotaResetStatusMessage(waitMs));
+      pollTimer = setTimeout(pollLoop, waitMs);
       return;
     }
 
@@ -242,7 +288,18 @@ function startBroadcastWatch() {
       }
       sendStatus('Waiting for you to go live…');
     } catch (err) {
-      console.error('Broadcast check failed:', err?.message || err);
+      const reason = errorReason(err);
+      console.error('Broadcast check failed:', reason);
+
+      if (isQuotaError(reason)) {
+        clearInterval(broadcastWatchTimer);
+        broadcastWatchTimer = null;
+        const waitMs = msUntilQuotaReset() + QUOTA_RETRY_BUFFER_MS;
+        sendStatus(quotaResetStatusMessage(waitMs));
+        setTimeout(startBroadcastWatch, waitMs);
+        return;
+      }
+
       sendStatus('Could not reach YouTube. Retrying…');
     }
   };
